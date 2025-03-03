@@ -1,19 +1,29 @@
 const draw = require('../common/draw.js');
+const constants = require('../common/constants.js');
+const utils = require('../common/utils.js');
 
-const constants = {};
-
-constants.DATA_DIR = "../data";
-constants.RAW_DIR = constants.DATA_DIR + "/raw";
-constants.DATASET_DIR = constants.DATA_DIR + "/dataset";
-constants.JSON_DIR = constants.DATASET_DIR + "/json";
-constants.IMG_DIR = constants.DATASET_DIR + "/img";
-constants.SAMPLES = constants.DATASET_DIR + "/samples.json";
+const { createCanvas } = require('canvas');
+const canvas = createCanvas(400, 400);
+const ctx = canvas.getContext('2d');
 
 const fs = require('fs');
+
+if (fs.existsSync(constants.DATASET_DIR)) {
+    fs.readdirSync(constants.DATASET_DIR).forEach(fileName =>
+        fs.rmSync(constants.DATASET_DIR + "/" + fileName, { recursive: true })
+    );
+    fs.rmdirSync(constants.DATASET_DIR);
+}
+fs.mkdirSync(constants.DATASET_DIR);
+fs.mkdirSync(constants.JSON_DIR);
+fs.mkdirSync(constants.IMG_DIR);
+
+console.log("GENERATING DATASET ...");
 
 const fileNames = fs.readdirSync(constants.RAW_DIR);
 const samples = [];
 let id = 1;
+
 fileNames.forEach(fn => {
     const content = fs.readFileSync(
         constants.RAW_DIR + "/" + fn
@@ -35,10 +45,11 @@ fileNames.forEach(fn => {
         );
 
         generateImageFile(
-            constants.IMG_DIR+"/"+id+".png",
+            constants.IMG_DIR + "/" + id + ".png",
             paths
-        )
+        );
 
+        utils.printProgress(id, fileNames.length * 8);
         id++;
     }
 });
@@ -47,9 +58,16 @@ fs.writeFileSync(constants.SAMPLES,
     JSON.stringify(samples)
 );
 
-function generateImageFile(outFile,paths) {
-    draw.paths(createContext,paths);
+fs.writeFileSync(constants.SAMPLES_JS,
+    "const samples=" + JSON.stringify(samples) + ";"
+);
+
+function generateImageFile(outFile, paths) {
+    ctx.clearRect(0, 0,
+        canvas.width, canvas.height
+    );
+    draw.paths(ctx, paths);
 
     const buffer = canvas.toBuffer("image/png");
-    fs.writeFileSync(outFile,buffer);
+    fs.writeFileSync(outFile, buffer);
 }
